@@ -10,7 +10,7 @@ Parse SGF file and write latex igo markup:
 - cargo run --bin to_latex -- -f resources/The_59th_Judan_Title_Match_3rd_game.sgf
 
 Parse SGF file and final board position in ASCII:
-  cargo run --bin to_ascii -- -f ./resources/game.sgf
+- cargo run --bin to_ascii -- -f ./resources/game.sgf
 
 
 Parse SGF file and show in an example Open GL GUI:
