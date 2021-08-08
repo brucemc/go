@@ -1,0 +1,24 @@
+[package]
+name = "go"
+version = "0.1.0"
+authors = ["Bruce McIntosh <bruce.e.mcintosh@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+anyhow = "1.0.40"
+thiserror = "1.0.26"
+clap = "2.33.3"
+utf8-chars = "1.0.2"
+array2d = "0.2.1"
+alphabet = "0.2.2"
+itertools = "0.10.1"
+
+[dev-dependencies]
+egui = "0.12.0"
+epi = "0.12.0"
+egui_glium = "0.12.0"
+glium = "0.29.1"
+image = "0.23.14"
