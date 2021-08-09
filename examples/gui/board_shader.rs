@@ -51,7 +51,46 @@ impl Shader {
         out vec4 fragColor;
 
         void main() {
-            fragColor = texture(colour_texture, v_tex_coords);
+            if (min(v_tex_coords.x, v_tex_coords.y) < 0.048) {
+              fragColor = texture(colour_texture, v_tex_coords);
+            }
+            else if (max(v_tex_coords.x, v_tex_coords.y) > 0.952) {
+              fragColor = texture(colour_texture, v_tex_coords);
+            }
+            else if (distance(vec2(0.2,0.2), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.2,0.5), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.2,0.8), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.5,0.2), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.5,0.5), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.5,0.8), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.8,0.2), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.8,0.5), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else if (distance(vec2(0.8,0.8), v_tex_coords) < 0.007) {
+                  fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+            else {
+              vec2 v = cos(v_tex_coords*20.0*2.0*3.1415192);
+              fragColor = vec4(1.0)-smoothstep(0.92,1.0,max(v.x,v.y));
+              if (fragColor.x > 0.5) {
+                  fragColor = texture(colour_texture, v_tex_coords);
+              }
+           }
         }
     "#;
 

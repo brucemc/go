@@ -60,10 +60,10 @@ impl Shader {
             float s = (w-h) / w;
 
             float x = s + (position.x * h / w) / 20.0;
-            x = x + ((col - 9.0) * h / w / 9.85 );
+            x = x + ((col - 9.0) * h / w / 10.0 );
 
             float y = position.y / 20.0;
-            y = y + ((row - 9.0) / 9.85 );
+            y = y + ((row - 9.0) / 10.0 );
 
             gl_Position = vec4(x, y, 0.0, 1.0);
           }
