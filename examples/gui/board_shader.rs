@@ -51,10 +51,10 @@ impl Shader {
         out vec4 fragColor;
 
         void main() {
-            if (min(v_tex_coords.x, v_tex_coords.y) < 0.048) {
+            if (min(v_tex_coords.x, v_tex_coords.y) < 0.049) {
               fragColor = texture(colour_texture, v_tex_coords);
             }
-            else if (max(v_tex_coords.x, v_tex_coords.y) > 0.952) {
+            else if (max(v_tex_coords.x, v_tex_coords.y) > 0.951) {
               fragColor = texture(colour_texture, v_tex_coords);
             }
             else if (distance(vec2(0.2,0.2), v_tex_coords) < 0.007) {
@@ -86,7 +86,7 @@ impl Shader {
             }
             else {
               vec2 v = cos(v_tex_coords*20.0*2.0*3.1415192);
-              fragColor = vec4(1.0)-smoothstep(0.92,1.0,max(v.x,v.y));
+              fragColor = vec4(1.0)-smoothstep(0.95,1.0,max(v.x,v.y));
               if (fragColor.x > 0.5) {
                   fragColor = texture(colour_texture, v_tex_coords);
               }

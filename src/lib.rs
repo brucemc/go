@@ -148,18 +148,18 @@ mod tests {
     #[test]
     fn move_numbers() {
         let game = Game::new(19);
-        assert_eq!(game.get_move_number(), 0);
+        assert_eq!(game.get_final_move_number(), 0);
         let game = Game::from_sgf_file("./resources/The_59th_Judan_Title_Match_3rd_game.sgf".to_string()).unwrap();
-        assert_eq!(game.get_move_number(), 337);
+        assert_eq!(game.get_final_move_number(), 337);
     }
 
     #[test]
     fn place_stones() {
         let mut game = Game::new(19);
         game.place_handicap_stone(Intersection::new(2,2)).ok();
-        assert_eq!(game.get_move_number(), 0);
+        assert_eq!(game.get_final_move_number(), 0);
         game.place_stone(Intersection::new(3,3), Color::White).ok();
-        assert_eq!(game.get_move_number(), 1);
+        assert_eq!(game.get_final_move_number(), 1);
         let board = game.get_board(1).unwrap();
         assert_eq!(board.to_ascii(),
             ".  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  \n\

@@ -1,7 +1,8 @@
 #[allow(unused_imports)]
 use clap::{App, Arg};
-use go::*;
 use glium::glutin;
+use go::*;
+use egui::Key::{ArrowRight, ArrowLeft};
 
 mod board_shader;
 mod stone_shader;
@@ -25,7 +26,6 @@ fn create_display(event_loop: &glutin::event_loop::EventLoop<()>) -> glium::Disp
 }
 
 fn main() -> Result<(), GoError> {
-
     let matches = App::new("sgf_viewer")
         .version("0.1.0")
         .author("Bruce McIntosh <bruce.e.mcintosh@gmail.com>")
@@ -39,7 +39,10 @@ fn main() -> Result<(), GoError> {
         )
         .get_matches();
 
-    let file_name = matches.value_of("file").map(|f| f.to_string()).ok_or(GoError::Other("No file parameter".to_string()))?;
+    let file_name = matches
+        .value_of("file")
+        .map(|f| f.to_string())
+        .ok_or(GoError::Other("No file parameter".to_string()))?;
 
     let event_loop = glutin::event_loop::EventLoop::with_user_event();
     let display = create_display(&&event_loop);
@@ -96,9 +99,7 @@ fn main() -> Result<(), GoError> {
     let mut ss = stone_shader::Shader::new(&display);
 
     println!("Parsing game");
-    let game =
-        go::Game::from_sgf_file(file_name)
-            .unwrap();
+    let game = go::Game::from_sgf_file(file_name).unwrap();
     let mut move_number: usize = 0;
 
     println!("Running GUI");
@@ -107,12 +108,23 @@ fn main() -> Result<(), GoError> {
         let mut redraw = || {
             egui.begin_frame(&display);
 
+            if egui.ctx().input().key_pressed(ArrowRight) {
+                if move_number < game.get_final_move_number() {
+                    move_number = move_number + 1;
+                }
+            }
+            if egui.ctx().input().key_pressed(ArrowLeft) {
+                if move_number > 0 {
+                    move_number = move_number - 1;
+                }
+            }
+
             let mut quit = false;
 
             let d = display.get_framebuffer_dimensions();
 
             egui::SidePanel::left("my_side_panel", 300.0).show(egui.ctx(), |ui| {
-            // egui::Window::new("my_side_panel").show(egui.ctx(), |ui| {
+                // egui::Window::new("my_side_panel").show(egui.ctx(), |ui| {
                 // ui.heading("Hello World!");
                 if ui.button("Quit").clicked() {
                     quit = true;
@@ -146,20 +158,25 @@ fn main() -> Result<(), GoError> {
                         }
                     }
                     if ui.button(">").clicked() {
-                        if move_number < game.get_move_number() {
+                        if move_number < game.get_final_move_number() {
                             move_number = move_number + 1;
                         }
                     }
                     if ui.button(">>").clicked() {
-                        move_number = game.get_move_number();
+                        move_number = game.get_final_move_number();
                     }
                     ui.label(move_number.to_string());
                     ui.label(" of ");
-                    ui.label(game.get_move_number().to_string());
-                    });
+                    ui.label(game.get_final_move_number().to_string());
+                });
 
-                ui.add(egui::Slider::new(&mut move_number, 0..=game.get_move_number()).text("Move"));
-
+                ui.spacing_mut().slider_width = 300.0;
+                ui.add(
+                    egui::Slider::new(&mut move_number, 0..=game.get_final_move_number())
+//                        .text("Move")
+                        .show_value(false)
+                        .clamp_to_range(true)
+                );
             });
 
             let (needs_repaint, shapes) = egui.end_frame(&display);
@@ -191,20 +208,30 @@ fn main() -> Result<(), GoError> {
                 // ss.render(&mut target, &black_stone_tex, d);
                 let board = game.get_board(move_number).unwrap();
 
-                for r in 0..19 {
-                    for c in 0..19 {
+                for r in 0..game.get_board_size() {
+                    for c in 0..game.get_board_size() {
                         if let Ok(p) = board.get_point(r, c) {
                             match p {
                                 PointState::Filled {
-                                    move_number:_,
+                                    move_number: smn,
                                     stone_color,
                                 } => match stone_color {
-                                    Color::White => {
-                                        ss.render(&mut target, &white_stone_tex, d, r, c)
-                                    }
-                                    Color::Black => {
-                                        ss.render(&mut target, &black_stone_tex, d, r, c)
-                                    }
+                                    Color::White => ss.render(
+                                        &mut target,
+                                        &white_stone_tex,
+                                        d,
+                                        r,
+                                        c,
+                                        if move_number > 0 && move_number == smn {1} else {0},
+                                    ),
+                                    Color::Black => ss.render(
+                                        &mut target,
+                                        &black_stone_tex,
+                                        d,
+                                        r,
+                                        c,
+                                        if move_number > 0 && move_number == smn {2} else {0},
+                                    ),
                                 },
                                 _ => {}
                             }

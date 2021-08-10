@@ -20,7 +20,7 @@ fn main() -> Result<(), GoError> {
 
     let file_name = matches.value_of("file").map(|f| f.to_string()).ok_or(GoError::Other("No file parameter".to_string()))?;
     let game = go::Game::from_sgf_file(file_name)?;
-    let board = game.get_board(game.get_move_number()).unwrap();
+    let board = game.get_board(game.get_final_move_number()).unwrap();
     println!("{}", board.to_ascii());
     Ok(())
 }

@@ -50,8 +50,6 @@ impl Shader {
           uniform float row;
           uniform float col;
 
-
-
           out vec2 v_tex_coords;
 
           void main() {
@@ -75,11 +73,35 @@ impl Shader {
         in vec2 v_tex_coords;
 
         uniform sampler2D colour_texture;
+        uniform int mark;
 
         out vec4 fragColor;
 
         void main() {
            fragColor = texture(colour_texture, v_tex_coords);
+           if (mark > 0) {
+               float radius = 0.3;
+               float boarder_thick = 0.05;
+               float d = distance (vec2(0.5,0.5), v_tex_coords);
+               float t1 = 1.0 - smoothstep(radius-boarder_thick, radius, d);
+               float t2 = 1.0 - smoothstep(radius, radius+boarder_thick, d);
+               if (mark == 1) {
+                 fragColor = vec4(mix(fragColor.rgb, mix(vec3(0.0), fragColor.rgb, t1), t2), fragColor.a);
+               }
+               else {
+                 fragColor = vec4(mix(fragColor.rgb, mix(vec3(0.8), fragColor.rgb, t1), t2), fragColor.a);
+               }
+               
+               //fragColor = vec4(vec3(0.75)-fragColor.rgb, fragColor.a);
+               //if (d < 0.3 && d > 0.2) {
+               //  if (fragColor.r < 0.3) {
+               //      fragColor = vec4(vec3(0.75)-fragColor.rgb, fragColor.a);
+               //  }
+               //  else {
+               //      fragColor = vec4(fragColor.rgb-vec3(0.9), fragColor.a);
+               //  }
+               //}
+           }
         }
     "#;
 
@@ -106,23 +128,21 @@ impl Shader {
         d: (u32, u32),
         r: usize,
         c: usize,
+        mark: i32,
     ) {
         let uniforms = uniform! {
         colour_texture : texture,
         w : d.0 as f32,
         h : d.1 as f32,
         row : (18-r) as f32,
-        col : c as f32};
+        col : c as f32,
+        mark : mark};
 
         let params = glium::DrawParameters {
             blend: glium::draw_parameters::Blend::alpha_blending(),
             ..Default::default()
         };
 
-        //         let params = glium::DrawParameters {
-        // //            polygon_mode: Line,
-        //             .. Default::default()
-        //         };
         target
             .draw(
                 &self.vertex_buffer,

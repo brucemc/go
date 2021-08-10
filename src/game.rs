@@ -13,6 +13,7 @@ use super::Parser;
 use super::SgfNode;
 
 pub struct Game {
+    board_size: usize,
     player_black: String,
     player_white: String,
     rank_black: String,
@@ -26,6 +27,7 @@ pub struct Game {
 impl Game {
     pub fn new(board_size: usize) -> Game {
         Game {
+            board_size,
             player_black: "".to_string(),
             player_white: "".to_string(),
             rank_black: "".to_string(),
@@ -39,6 +41,7 @@ impl Game {
 
     pub fn from_sgf(parser: &Parser) -> Game {
         Game {
+            board_size: parser.get_board_size(),
             player_black: parser.get_player_black(),
             player_white: parser.get_player_white(),
             rank_black: parser.get_rank_black(),
@@ -50,7 +53,11 @@ impl Game {
         }
     }
 
-    pub fn get_move_number(&self) -> usize {
+    pub fn get_board_size(&self) -> usize {
+        self.board_size
+    }
+
+    pub fn get_final_move_number(&self) -> usize {
         self.move_number
     }
 
