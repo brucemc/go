@@ -126,8 +126,8 @@ impl Shader {
         target: &mut glium::Frame,
         texture: &glium::texture::SrgbTexture2d,
         d: (u32, u32),
-        r: usize,
-        c: usize,
+        r: u32,
+        c: u32,
         mark: i32,
     ) {
         let uniforms = uniform! {

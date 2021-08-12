@@ -8,6 +8,7 @@ edition = "2018"
 
 
 [dependencies]
+sgf-parser = "2.6.0"
 anyhow = "1.0.40"
 thiserror = "1.0.26"
 clap = "2.33.3"

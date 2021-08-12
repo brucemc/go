@@ -1,5 +1,7 @@
-Parser for go games in SGF  (Smart Game Format) Files
-that can be used to render latex igo diagrams or to underpin a GUI application.
+#go utils
+
+Parse go games in SGF  (Smart Game Format) Files
+into a form that can be used to render latex igo diagrams or a GUI application.
 
 Build and run unit tests
 - cargo build

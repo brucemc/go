@@ -1,3 +1,6 @@
+use sgf_parser::*;
+use std::fs;
+
 use anyhow::{Result};
 use std::array::IntoIter;
 use std::collections::BTreeMap;
@@ -5,15 +8,13 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 
 use super::Board;
-use super::Color;
 use super::GoError;
 use super::Intersection;
 use super::Move;
-use super::Parser;
-use super::SgfNode;
 
+#[derive(Default, Debug, Clone)]
 pub struct Game {
-    board_size: usize,
+    board_size: u32,
     player_black: String,
     player_white: String,
     rank_black: String,
@@ -25,7 +26,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(board_size: usize) -> Game {
+    pub fn new(board_size: u32) -> Game {
         Game {
             board_size,
             player_black: "".to_string(),
@@ -39,21 +40,44 @@ impl Game {
         }
     }
 
-    pub fn from_sgf(parser: &Parser) -> Game {
-        Game {
-            board_size: parser.get_board_size(),
-            player_black: parser.get_player_black(),
-            player_white: parser.get_player_white(),
-            rank_black: parser.get_rank_black(),
-            rank_white: parser.get_rank_white(),
-            board_positions: BTreeMap::from_iter(IntoIter::new([(0, Board::new(parser.get_board_size()))])),
-            handicap_stones: HashSet::new(),
-            move_number: 0,
-            moves: BTreeMap::new(),
-        }
+    pub fn from_game_tree(tree: &sgf_parser::GameTree) -> Game {
+        let mut game = Game::default();
+        let mut iter = tree.iter();
+
+        iter.for_each(|node| {
+            let mut node_iter = node.tokens.iter();
+            node_iter.for_each(|token|{
+                match &token {
+                    SgfToken::Size (size,_) => {
+                        game.board_size = *size;
+                        game.board_positions = BTreeMap::from_iter(IntoIter::new([(0, Board::new(game.board_size))]));
+                    },
+                    SgfToken::PlayerName {color: sgf_parser::Color::Black, name} => {
+                        game.player_black = name.to_string();
+                    },
+                    SgfToken::PlayerName {color: sgf_parser::Color::White, name} => {
+                        game.player_white = name.to_string();
+                    },
+                    SgfToken::PlayerRank {color: sgf_parser::Color::Black, rank} => {
+                        game.rank_black = rank.to_string();
+                    },
+                    SgfToken::PlayerRank {color: sgf_parser::Color::White, rank} => {
+                        game.rank_white = rank.to_string();
+                    },
+                    SgfToken::Add {color: sgf_parser::Color::Black, coordinate} => {
+                        game.place_handicap_stone(Intersection::from_sgf(coordinate.1.into(), coordinate.0.into()));
+                    },
+                    SgfToken::Move {color, action: Action::Move(col,row)} => {
+                        game.place_stone(Intersection::from_sgf(*row as u32, *col as u32), *color);
+                    },
+                    _ => {}
+                }
+            });
+        });
+        return game;
     }
 
-    pub fn get_board_size(&self) -> usize {
+    pub fn get_board_size(&self) -> u32 {
         self.board_size
     }
 
@@ -118,25 +142,25 @@ impl Game {
     }
 
     pub fn from_sgf_file(file_name: String) -> Result<Game, GoError> {
-        let mut parser = Parser::new(file_name)?;
-        let sgf_nodes = parser.parse()?;
+        let sgf_source = fs::read_to_string(file_name)?;
+        let tree= parse(sgf_source.as_str())?;
 
-        let mut game = Game::from_sgf(&parser);
+        let mut game = Game::from_game_tree(&tree);
 
 
-        for sgf_node in &sgf_nodes {
-            match sgf_node {
-                SgfNode::PlaceHandicapStone(intersection) => {
-                    game.place_handicap_stone(*intersection)?;
-                }
-                SgfNode::PlaceStone(intersection, color) => {
-                    game.place_stone(
-                        *intersection,
-                        *color)?;
-
-                }
-            }
-        }
+        // for sgf_node in &sgf_nodes {
+        //     match sgf_node {
+        //         SgfNode::PlaceHandicapStone(intersection) => {
+        //             game.place_handicap_stone(*intersection)?;
+        //         }
+        //         SgfNode::PlaceStone(intersection, color) => {
+        //             game.place_stone(
+        //                 *intersection,
+        //                 *color)?;
+        //
+        //         }
+        //     }
+        // }
         return Ok(game);
     }
 

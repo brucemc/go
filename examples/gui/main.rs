@@ -1,4 +1,5 @@
 #[allow(unused_imports)]
+use sgf_parser::*;
 use clap::{App, Arg};
 use glium::glutin;
 use go::*;

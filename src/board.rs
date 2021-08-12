@@ -1,3 +1,4 @@
+use sgf_parser::*;
 use alphabet::*;
 use anyhow::Result;
 use itertools::Itertools;
@@ -5,7 +6,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 
-use super::Color;
+use super::color_to_string;
 use super::GoError;
 use super::Intersection;
 use super::Move;
@@ -19,20 +20,20 @@ enum GroupPoint {
 
 #[derive(Debug, Clone)]
 pub struct Board {
-    size: usize,
+    size: u32,
     points: array2d::Array2D<PointState>,
 }
 
 impl Board {
-    pub fn new(size: usize) -> Board {
+    pub fn new(size: u32) -> Board {
         Board {
             size,
-            points: array2d::Array2D::filled_with(PointState::Empty, size, size),
+            points: array2d::Array2D::filled_with(PointState::Empty, size as usize, size as usize),
         }
     }
 
-    pub fn get_point(&self, r: usize, c: usize) -> Result<PointState, GoError> {
-        if let Some(p) = self.points.get(r, c).clone() {
+    pub fn get_point(&self, r: u32, c: u32) -> Result<PointState, GoError> {
+        if let Some(p) = self.points.get(r as usize, c as usize).clone() {
             Ok(p.clone())
         } else {
             Err(GoError::InvalidMove("No Point".to_string()))
@@ -52,7 +53,7 @@ impl Board {
 
         for c in 0..self.size {
             for r in 0..self.size {
-                match self.points.get(r, c) {
+                match self.points.get(r as usize, c as usize) {
                     Some(&PointState::Filled {
                         move_number: 0,
                         stone_color: _,
@@ -67,7 +68,7 @@ impl Board {
                         stone_color,
                     }) => {
                         ret += &r#"\"#.to_string();
-                        ret += &stone_color.to_string();
+                        ret += &color_to_string(&stone_color);
                         if move_number >= from_move.unwrap_or(0) {
                             ret += &"[";
                             ret += &move_number.to_string();
@@ -105,7 +106,7 @@ impl Board {
             if let Some(&PointState::Filled {
                 move_number,
                 stone_color: _,
-            }) = self.points.get(intersection.row, intersection.col)
+            }) = self.points.get(intersection.row as usize, intersection.col as usize)
             {
                 cap_ret += &move_number.to_string();
             } else {
@@ -139,12 +140,12 @@ impl Board {
         intersection: Intersection,
         stone_color: Color,
     ) -> Result<(), GoError> {
-        match self.points.get(intersection.row, intersection.col) {
+        match self.points.get(intersection.row as usize, intersection.col as usize) {
             Some(&PointState::Empty) => {
                 self.points
                     .set(
-                        intersection.row,
-                        intersection.col,
+                        intersection.row as usize,
+                        intersection.col as usize,
                         PointState::Filled {
                             move_number: move_number.unwrap_or(0),
                             stone_color,
@@ -166,13 +167,13 @@ impl Board {
 
     fn remove_captures(&mut self, placed_stone_color: Color) -> Result<(), String> {
         let mut group_assignments: array2d::Array2D<GroupPoint> =
-            array2d::Array2D::filled_with(GroupPoint::Ungrouped, self.size, self.size);
+            array2d::Array2D::filled_with(GroupPoint::Ungrouped, self.size as usize, self.size as usize);
         let mut group_liberties: HashSet<Intersection> = HashSet::new();
         let mut group_members: HashSet<Intersection> = HashSet::new();
         let mut group_number = 1;
         for r in 0..self.size {
             for c in 0..self.size {
-                match self.points.get(r, c) {
+                match self.points.get(r as usize, c as usize) {
                     Some(&PointState::Filled {
                         move_number: _,
                         stone_color,
@@ -190,8 +191,8 @@ impl Board {
                                     for intersection in &group_members {
                                         self.points
                                             .set(
-                                                intersection.row,
-                                                intersection.col,
+                                                intersection.row as usize,
+                                                intersection.col as usize,
                                                 PointState::Empty,
                                             )
                                             .or(Err(GoError::InvalidMove(
@@ -222,9 +223,9 @@ impl Board {
         intersection: Intersection,
         group_number: i32,
     ) -> Result<bool, GoError> {
-        match group_assignments.get(intersection.row, intersection.col) {
+        match group_assignments.get(intersection.row as usize, intersection.col as usize) {
             Some(&GroupPoint::Ungrouped) => {
-                match self.points.get(intersection.row, intersection.col) {
+                match self.points.get(intersection.row as usize, intersection.col as usize) {
                     Some(&PointState::Empty) => {
                         group_liberties.insert(intersection);
                         Ok(false)
@@ -236,8 +237,8 @@ impl Board {
                         if stone_color == group_color {
                             group_assignments
                                 .set(
-                                    intersection.row,
-                                    intersection.col,
+                                    intersection.row as usize,
+                                    intersection.col as usize,
                                     GroupPoint::Grouped { group_number },
                                 )
                                 .or(Err(GoError::InvalidMove("Could not set group".to_string())))
@@ -300,7 +301,7 @@ impl Board {
 
         for r in 0..self.size {
             for c in 0..self.size {
-                match self.points.get(r, c) {
+                match self.points.get(r as usize, c as usize) {
                     Some(&PointState::Filled {
                         move_number: _,
                         stone_color,

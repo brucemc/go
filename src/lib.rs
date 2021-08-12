@@ -1,9 +1,6 @@
 
 use thiserror::Error;
-
-mod parser;
-use self::parser::Parser;
-use self::parser::SgfNode;
+use sgf_parser::*;
 
 mod board;
 use self::board::Board;
@@ -22,31 +19,26 @@ pub enum GoError {
     InvalidMove(String),
     /// Represents all other cases of `std::io::Error`.
     #[error(transparent)]
+    SgfError(#[from] sgf_parser::SgfError),
+    /// Represents all other cases of `std::io::Error`.
+    #[error(transparent)]
     IOError(#[from] std::io::Error),
     #[error("other error: {0}")]
     Other(String),
 
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Color {
-    Black,
-    White,
-}
-
-impl std::string::ToString for Color {
-    fn to_string(&self) -> String {
-        match self {
+fn color_to_string(color : &sgf_parser::Color) -> String {
+        match color {
             Color::Black => "black".to_string(),
             Color::White => "white".to_string(),
         }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub struct Intersection {
-    row: usize,
-    col: usize,
+    row: u32,
+    col: u32,
 }
 
 // The first letter designates the column (left to right), the second the row (top to bottom).
@@ -72,16 +64,12 @@ pub struct Intersection {
 //  18 A1  B1  C1  D1  ... S1  T1
 
 impl Intersection {
-    fn new(row: usize, col: usize) -> Intersection {
+    fn new(row: u32, col: u32) -> Intersection {
         Intersection { row, col }
     }
 
-    fn from_sgf_coord(sgf_coord: &[char]) -> Intersection {
-        Intersection {
-            col: sgf_coord[0] as usize - 'a' as usize,
-            row: sgf_coord[1] as usize - 'a' as usize,
-
-        }
+    fn from_sgf(row: u32, col: u32) -> Intersection {
+        Intersection { row: row-1, col: col-1 }
     }
 
     fn up(&self) -> Intersection {
