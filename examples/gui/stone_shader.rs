@@ -82,7 +82,7 @@ impl Shader {
            if (mark > 0) {
                float radius = 0.3;
                float boarder_thick = 0.05;
-               float d = distance (vec2(0.5,0.5), v_tex_coords);
+               float d = distance (vec2(0.49,0.51), v_tex_coords);
                float t1 = 1.0 - smoothstep(radius-boarder_thick, radius, d);
                float t2 = 1.0 - smoothstep(radius, radius+boarder_thick, d);
                if (mark == 1) {
@@ -124,7 +124,7 @@ impl Shader {
     pub fn render(
         &mut self,
         target: &mut glium::Frame,
-        texture: &glium::texture::Texture2d,
+        texture: &glium::texture::SrgbTexture2d,
         d: (u32, u32),
         r: usize,
         c: usize,

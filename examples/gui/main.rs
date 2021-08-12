@@ -61,7 +61,7 @@ fn main() -> Result<(), GoError> {
         let img_dim = img.dimensions();
         let img = glium::texture::RawImage2d::from_raw_rgba_reversed(&img.into_raw(), img_dim);
 
-        glium::texture::Texture2d::new(&display, img).unwrap()
+        glium::texture::SrgbTexture2d::new(&display, img).unwrap()
     };
 
     println!("Loading black stone");
@@ -76,7 +76,7 @@ fn main() -> Result<(), GoError> {
         let img_dim = img.dimensions();
         let img = glium::texture::RawImage2d::from_raw_rgba_reversed(&img.into_raw(), img_dim);
 
-        glium::texture::Texture2d::new(&display, img).unwrap()
+        glium::texture::SrgbTexture2d::new(&display, img).unwrap()
     };
 
     println!("Loading white stone");
@@ -91,7 +91,7 @@ fn main() -> Result<(), GoError> {
         let img_dim = img.dimensions();
         let img = glium::texture::RawImage2d::from_raw_rgba_reversed(&img.into_raw(), img_dim);
 
-        glium::texture::Texture2d::new(&display, img).unwrap()
+        glium::texture::SrgbTexture2d::new(&display, img).unwrap()
     };
 
     println!("Creating shaders");
@@ -170,7 +170,7 @@ fn main() -> Result<(), GoError> {
                     ui.label(game.get_final_move_number().to_string());
                 });
 
-                ui.spacing_mut().slider_width = 300.0;
+                ui.spacing_mut().slider_width = 280.0;
                 ui.add(
                     egui::Slider::new(&mut move_number, 0..=game.get_final_move_number())
 //                        .text("Move")

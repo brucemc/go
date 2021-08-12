@@ -110,7 +110,7 @@ impl Shader {
         }
     }
 
-    pub fn render(&mut self, target: &mut glium::Frame, texture: &glium::texture::Texture2d, d : (u32,u32)) {
+    pub fn render(&mut self, target: &mut glium::Frame, texture: &glium::texture::SrgbTexture2d, d : (u32,u32)) {
         let uniforms = uniform! { colour_texture : texture, w : d.0 as f32, h : d.1 as f32 };
         let params = glium::DrawParameters {
 //            polygon_mode: Line,
