@@ -85,7 +85,7 @@ impl Shader {
                   fragColor = vec4(0.0, 0.0, 0.0, 1.0);
             }
             else {
-              vec2 v = cos(v_tex_coords*20.0*2.0*3.1415192);
+              vec2 v = cos(v_tex_coords*20.0*2.0*3.1415192);  // the grid
               fragColor = vec4(1.0)-smoothstep(0.95,1.0,max(v.x,v.y));
               if (fragColor.x > 0.5) {
                   fragColor = texture(colour_texture, v_tex_coords);

@@ -1,12 +1,97 @@
+use clap::{App, Arg};
+use egui::Key::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp};
+use glium::glutin;
 #[allow(unused_imports)]
 use sgf_parser::*;
-use clap::{App, Arg};
-use glium::glutin;
-use go::*;
-use egui::Key::{ArrowRight, ArrowLeft};
 
 mod board_shader;
+mod next_shader;
 mod stone_shader;
+
+struct GuiState {
+    game: go::Game,
+    board_number: u32,
+    variation: u32,
+}
+
+impl GuiState {
+    pub fn game(&self) -> &go::Game {
+        &self.game
+    }
+
+    pub fn get_board(&self) -> Result<go::Board, go::Error> {
+        self.game.get_board(self.board_number)
+    }
+
+    pub fn get_board_number(&self) -> u32 {
+        self.board_number
+    }
+    pub fn get_variation(&self) -> u32 {
+        self.variation
+    }
+
+    pub fn next_variation(&mut self) {
+        if let Ok(board) = self.game.get_board(self.board_number) {
+            if self.variation < board.get_variation_count()-1 {
+                self.variation += 1;
+            }
+            else {
+                self.variation = 0;
+            }
+        }
+    }
+
+    pub fn prev_variation(&mut self) {
+        if let Ok(board) = self.game.get_board(self.board_number) {
+            if self.variation > 0 {
+                self.variation -= 1;
+            } else {
+                self.variation = board.get_variation_count() - 1;
+            }
+        }
+    }
+
+    pub fn first_board(&mut self) {
+        self.board_number = 0;
+        self.variation = 0;
+    }
+
+    pub fn next_board(&mut self) {
+        if let Ok(board) = self.game.get_board(self.board_number) {
+            if let Some(bn) = board.get_next(self.variation) {
+                self.board_number = bn;
+                self.variation = 0;
+            }
+        }
+    }
+
+    pub fn prev_board(&mut self) {
+        if let Ok(board) = self.game.get_board(self.board_number) {
+            self.board_number = board.get_prev();
+        }
+    }
+
+    pub fn last_board(&mut self) {
+        while let Ok(board) = self.game.get_board(self.board_number) {
+            if let Some(bn) = board.get_next(0) {
+                self.board_number = bn;
+            } else {
+                return;
+            }
+        }
+    }
+
+    pub fn last_move_number(&mut self) -> u32 {
+        let mut bn = self.board_number;
+        while let Ok(board) = self.game.get_board(bn) {
+            match board.get_next(0) {
+                Some(n) => bn = n,
+                _ => return bn,
+            }
+        }
+        bn
+    }
+}
 
 fn create_display(event_loop: &glutin::event_loop::EventLoop<()>) -> glium::Display {
     let window_builder = glutin::window::WindowBuilder::new()
@@ -26,7 +111,7 @@ fn create_display(event_loop: &glutin::event_loop::EventLoop<()>) -> glium::Disp
     glium::Display::new(window_builder, context_builder, &event_loop).unwrap()
 }
 
-fn main() -> Result<(), GoError> {
+fn main() -> Result<(), go::Error> {
     let matches = App::new("sgf_viewer")
         .version("0.1.0")
         .author("Bruce McIntosh <bruce.e.mcintosh@gmail.com>")
@@ -43,7 +128,7 @@ fn main() -> Result<(), GoError> {
     let file_name = matches
         .value_of("file")
         .map(|f| f.to_string())
-        .ok_or(GoError::Other("No file parameter".to_string()))?;
+        .ok_or(go::Error::Other("No file parameter".to_string()))?;
 
     let event_loop = glutin::event_loop::EventLoop::with_user_event();
     let display = create_display(&&event_loop);
@@ -98,10 +183,14 @@ fn main() -> Result<(), GoError> {
     println!("Creating shaders");
     let mut ts = board_shader::Shader::new(&display);
     let mut ss = stone_shader::Shader::new(&display);
+    let mut ns = next_shader::Shader::new(&display);
 
     println!("Parsing game");
-    let game = go::Game::from_sgf_file(file_name).unwrap();
-    let mut move_number: usize = 0;
+    let mut gui_state = GuiState {
+        game: go::Game::from_sgf_file(file_name).unwrap(),
+        board_number: 0,
+        variation: 0,
+    };
 
     println!("Running GUI");
 
@@ -110,19 +199,21 @@ fn main() -> Result<(), GoError> {
             egui.begin_frame(&display);
 
             if egui.ctx().input().key_pressed(ArrowRight) {
-                if move_number < game.get_final_move_number() {
-                    move_number = move_number + 1;
-                }
+                gui_state.next_board();
             }
             if egui.ctx().input().key_pressed(ArrowLeft) {
-                if move_number > 0 {
-                    move_number = move_number - 1;
-                }
+                gui_state.prev_board();
+            }
+            if egui.ctx().input().key_pressed(ArrowUp) {
+                gui_state.next_variation();
+            }
+            if egui.ctx().input().key_pressed(ArrowDown) {
+                gui_state.prev_variation();
             }
 
             let mut quit = false;
 
-            let d = display.get_framebuffer_dimensions();
+            let display_dim = display.get_framebuffer_dimensions();
 
             egui::SidePanel::left("my_side_panel", 300.0).show(egui.ctx(), |ui| {
                 // egui::Window::new("my_side_panel").show(egui.ctx(), |ui| {
@@ -133,51 +224,47 @@ fn main() -> Result<(), GoError> {
                 ui.add(egui::widgets::Separator::default().spacing(20.0));
                 ui.horizontal(|ui| {
                     ui.label("White: ");
-                    ui.label(game.get_player_white());
+                    ui.label(gui_state.game().get_player_white());
                     ui.label(" (");
-                    ui.label(game.get_rank_white());
+                    ui.label(gui_state.game().get_rank_white());
                     ui.label(" )");
                 });
                 ui.add(egui::widgets::Separator::default().spacing(20.0));
 
                 ui.horizontal(|ui| {
                     ui.label("Black: ");
-                    ui.label(game.get_player_black());
+                    ui.label(gui_state.game().get_player_black());
                     ui.label(" (");
-                    ui.label(game.get_rank_black());
+                    ui.label(gui_state.game().get_rank_black());
                     ui.label(" )");
                 });
                 ui.add(egui::widgets::Separator::default().spacing(20.0));
 
                 ui.horizontal(|ui| {
                     if ui.button("<<").clicked() {
-                        move_number = 0;
+                        gui_state.first_board();
                     }
                     if ui.button("<").clicked() {
-                        if move_number > 0 {
-                            move_number = move_number - 1;
-                        }
+                        gui_state.prev_board()
                     }
                     if ui.button(">").clicked() {
-                        if move_number < game.get_final_move_number() {
-                            move_number = move_number + 1;
-                        }
+                        gui_state.next_board()
                     }
                     if ui.button(">>").clicked() {
-                        move_number = game.get_final_move_number();
+                        gui_state.last_board();
                     }
-                    ui.label(move_number.to_string());
+                    ui.label(gui_state.get_board_number().to_string());
                     ui.label(" of ");
-                    ui.label(game.get_final_move_number().to_string());
+                    ui.label(gui_state.last_move_number().to_string());
                 });
 
-                ui.spacing_mut().slider_width = 280.0;
-                ui.add(
-                    egui::Slider::new(&mut move_number, 0..=game.get_final_move_number())
-//                        .text("Move")
-                        .show_value(false)
-                        .clamp_to_range(true)
-                );
+                //                ui.spacing_mut().slider_width = 280.0;
+                //                ui.add(
+                //                    egui::Slider::new(&mut board_number, 0..=game.get_final_move_number())
+                ////                        .text("Move")
+                //                        .show_value(false)
+                //                        .clamp_to_range(true)
+                //                );
             });
 
             let (needs_repaint, shapes) = egui.end_frame(&display);
@@ -205,33 +292,37 @@ fn main() -> Result<(), GoError> {
 
                 // draw things behind egui here
 
-                ts.render(&mut target, &board_tex, d);
-                // ss.render(&mut target, &black_stone_tex, d);
-                let board = game.get_board(move_number).unwrap();
+                ts.render(&mut target, &board_tex, display_dim);
 
-                for r in 0..game.get_board_size() {
-                    for c in 0..game.get_board_size() {
+                let board = gui_state.get_board().unwrap();
+
+                for r in 0..board.get_size() {
+                    for c in 0..board.get_size() {
                         if let Ok(p) = board.get_point(r, c) {
                             match p {
-                                PointState::Filled {
-                                    move_number: smn,
+                                go::PointState::Filled {
+                                    move_number,
                                     stone_color,
                                 } => match stone_color {
                                     Color::White => ss.render(
                                         &mut target,
                                         &white_stone_tex,
-                                        d,
+                                        display_dim,
                                         r,
                                         c,
-                                        if move_number > 0 && move_number == smn {1} else {0},
+                                        stone_color,
+                                        gui_state.get_board_number() > 0
+                                            && board.get_last_move().get_number() == move_number,
                                     ),
                                     Color::Black => ss.render(
                                         &mut target,
                                         &black_stone_tex,
-                                        d,
+                                        display_dim,
                                         r,
                                         c,
-                                        if move_number > 0 && move_number == smn {2} else {0},
+                                        stone_color,
+                                        gui_state.get_board_number() > 0
+                                            && board.get_last_move().get_number() == move_number,
                                     ),
                                 },
                                 _ => {}
@@ -239,6 +330,24 @@ fn main() -> Result<(), GoError> {
                         }
                     }
                 }
+
+                let next_boards = board.get_next_boards();
+                let mut i = 0;
+                for board_number in next_boards {
+                    if let Ok(b) = gui_state.game().get_board(board_number) {
+                        let m = b.get_last_move();
+                        ns.render(
+                            &mut target,
+                            display_dim,
+                            m.row(),
+                            m.col(),
+                            m.get_color(),
+                            i == gui_state.get_variation(),
+                        );
+                        i += 1;
+                    }
+                }
+
                 egui.paint(&display, &mut target, shapes);
 
                 // draw things on top of egui here

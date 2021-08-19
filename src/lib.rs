@@ -3,20 +3,22 @@ use thiserror::Error;
 use sgf_parser::*;
 
 mod board;
-use self::board::Board;
+pub use self::board::Board;
 
 mod game;
 pub use self::game::Game;
 
 
 #[derive(Error, Debug)]
-pub enum GoError {
+pub enum Error {
     #[error("file not found")]
     FileNotFound{source: std::io::Error},
     #[error("parse error: {0}")]
     ParseError(String),
     #[error("invalid move: {0}")]
     InvalidMove(String),
+    #[error("invalid board number: {0}")]
+    InvalidBoardNumber(String),
     /// Represents all other cases of `std::io::Error`.
     #[error(transparent)]
     SgfError(#[from] sgf_parser::SgfError),
@@ -115,17 +117,29 @@ impl Intersection {
 pub enum PointState {
     Empty,
     Filled {
-        move_number: usize,
+        move_number: u32,
         stone_color: Color,
     },
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Move {
-    move_number: usize,
+    move_number: u32,
     intersection: Intersection,
     color: Color,
 }
+
+impl Move {
+    pub fn get_number(&self) -> u32 { self.move_number }
+    pub fn row(&self) -> u32 {
+        self.intersection.row
+    }
+    pub fn col(&self) -> u32 {
+        self.intersection.col
+    }
+    pub fn get_color(&self) -> Color { self.color }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -146,7 +160,7 @@ mod tests {
         let mut game = Game::new(19);
         game.place_handicap_stone(Intersection::new(2,2)).ok();
         assert_eq!(game.get_final_move_number(), 0);
-        game.place_stone(Intersection::new(3,3), Color::White).ok();
+        game.place_stone(Intersection::new(3,3), Color::White, 0).ok();
         assert_eq!(game.get_final_move_number(), 1);
         let board = game.get_board(1).unwrap();
         assert_eq!(board.to_ascii(),

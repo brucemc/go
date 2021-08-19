@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::collections::HashSet;
 
 use super::color_to_string;
-use super::GoError;
+use super::Error;
 use super::Intersection;
 use super::Move;
 use super::PointState;
@@ -22,6 +22,10 @@ enum GroupPoint {
 pub struct Board {
     size: u32,
     points: array2d::Array2D<PointState>,
+    prev_board: u32,
+    next_board: Vec<u32>,
+    move_number: u32,
+    moves: BTreeMap<u32, Move>,
 }
 
 impl Board {
@@ -29,27 +33,69 @@ impl Board {
         Board {
             size,
             points: array2d::Array2D::filled_with(PointState::Empty, size as usize, size as usize),
+            prev_board: 0,
+            next_board: vec![],
+            move_number: 0,
+            moves: BTreeMap::new(),
         }
     }
 
-    pub fn get_point(&self, r: u32, c: u32) -> Result<PointState, GoError> {
+    pub fn get_size(&self) -> u32 { self.size }
+
+    pub fn set_prev(&mut self, board_number: u32) {
+        self.prev_board = board_number;
+    }
+
+    pub fn get_prev(&self) -> u32 {
+        self.prev_board
+    }
+
+    pub fn clear_next(&mut self) {
+        self.next_board.clear();
+    }
+
+    pub fn add_next(&mut self, board_number: u32) {
+        self.next_board.push(board_number);
+    }
+
+    pub fn get_next(&self, variation: u32) -> Option<u32> {
+        if self.next_board.len() > variation as usize {
+            Some(self.next_board[variation as usize])
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn get_next_boards(&self) -> Vec<u32> {
+        self.next_board.clone()
+    }
+
+    pub fn get_last_move(&self) -> Move {
+        self.moves[&self.move_number].clone()
+    }
+
+    pub fn get_variation_count(&self) -> u32 {
+        self.next_board.len() as u32
+    }
+
+    pub fn get_point(&self, r: u32, c: u32) -> Result<PointState, Error> {
         if let Some(p) = self.points.get(r as usize, c as usize).clone() {
             Ok(p.clone())
         } else {
-            Err(GoError::InvalidMove("No Point".to_string()))
+            Err(Error::InvalidBoardNumber("No Point".to_string()))
         }
     }
 
     pub fn render_diagram(
         &self,
-        from_move: Option<usize>,
-        all_moves: &BTreeMap<usize, Move>,
-    ) -> Result<String, GoError> {
+        from_move: Option<u32>,
+    ) -> Result<String, Error> {
         let mut ret: String = "".to_string();
         let mut cap_ret: String = "".to_string();
-        let mut max_move: usize = 0;
-        let mut numbered_moves: HashSet<usize> = HashSet::new();
-        let mut captured_moves: BTreeMap<Intersection, BTreeSet<usize>> = BTreeMap::new();
+        let mut max_move: u32 = 0;
+        let mut numbered_moves: HashSet<u32> = HashSet::new();
+        let mut captured_moves: BTreeMap<Intersection, BTreeSet<u32>> = BTreeMap::new();
 
         for c in 0..self.size {
             for r in 0..self.size {
@@ -89,7 +135,7 @@ impl Board {
 
         for move_num in from_move.unwrap_or(0)..max_move {
             if move_num > 0 && !numbered_moves.contains(&move_num) {
-                if let Some(m) = &all_moves.get(&move_num) {
+                if let Some(m) = &self.moves.get(&move_num) {
                     captured_moves
                         .entry(m.intersection)
                         .or_insert_with(BTreeSet::new)
@@ -134,12 +180,11 @@ impl Board {
         Ok(ret)
     }
 
-    pub fn place_stone(
+    pub fn add_stone(
         &mut self,
-        move_number: Option<usize>,
         intersection: Intersection,
         stone_color: Color,
-    ) -> Result<(), GoError> {
+    ) -> Result<(), Error> {
         match self.points.get(intersection.row as usize, intersection.col as usize) {
             Some(&PointState::Empty) => {
                 self.points
@@ -147,21 +192,49 @@ impl Board {
                         intersection.row as usize,
                         intersection.col as usize,
                         PointState::Filled {
-                            move_number: move_number.unwrap_or(0),
+                            move_number: 0,
                             stone_color,
                         },
                     )
                     .ok();
-                if move_number.is_some() {
-                    self.remove_captures(stone_color).ok();
-                }
+                self.remove_captures(stone_color).ok();
                 Ok(())
             }
             Some(&PointState::Filled {
                 move_number: _,
                 stone_color: _,
-            }) => Err(GoError::InvalidMove("Point already filled".to_string())),
-            None => Err(GoError::InvalidMove("Invalid board".to_string())),
+            }) => Err(Error::InvalidMove("Point already filled".to_string())),
+            None => Err(Error::InvalidMove("Point not found".to_string())),
+        }
+    }
+
+    pub fn place_stone(
+        &mut self,
+        intersection: Intersection,
+        stone_color: Color,
+    ) -> Result<(), Error> {
+        match self.points.get(intersection.row as usize, intersection.col as usize) {
+            Some(&PointState::Empty) => {
+                self.move_number += 1;
+                self.moves.insert(self.move_number, Move { move_number: self.move_number, intersection, color: stone_color });
+                self.points
+                    .set(
+                        intersection.row as usize,
+                        intersection.col as usize,
+                        PointState::Filled {
+                            move_number: self.move_number,
+                            stone_color,
+                        },
+                    )
+                    .ok();
+                self.remove_captures(stone_color).ok();
+                Ok(())
+            }
+            Some(&PointState::Filled {
+                move_number: _,
+                stone_color: _,
+            }) => Err(Error::InvalidMove("Point already filled".to_string())),
+            None => Err(Error::InvalidMove("Point not found".to_string())),
         }
     }
 
@@ -195,7 +268,7 @@ impl Board {
                                                 intersection.col as usize,
                                                 PointState::Empty,
                                             )
-                                            .or(Err(GoError::InvalidMove(
+                                            .or(Err(Error::InvalidBoardNumber(
                                                 "Could not set point".to_string(),
                                             )))
                                             .ok();
@@ -222,7 +295,7 @@ impl Board {
         group_color: Color,
         intersection: Intersection,
         group_number: i32,
-    ) -> Result<bool, GoError> {
+    ) -> Result<bool, Error> {
         match group_assignments.get(intersection.row as usize, intersection.col as usize) {
             Some(&GroupPoint::Ungrouped) => {
                 match self.points.get(intersection.row as usize, intersection.col as usize) {
@@ -241,7 +314,7 @@ impl Board {
                                     intersection.col as usize,
                                     GroupPoint::Grouped { group_number },
                                 )
-                                .or(Err(GoError::InvalidMove("Could not set group".to_string())))
+                                .or(Err(Error::InvalidBoardNumber("Could not set group".to_string())))
                                 .ok();
                             group_members.insert(intersection);
                             if intersection.row > 0 {
@@ -289,7 +362,7 @@ impl Board {
                             Ok(false)
                         }
                     }
-                    None => Err(GoError::InvalidMove("Invalid board".to_string())),
+                    None => Err(Error::InvalidBoardNumber("Invalid board".to_string())),
                 }
             }
             _ => Ok(false),
