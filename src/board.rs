@@ -170,7 +170,7 @@ impl Board {
 
         ret += &"\n";
         ret += "\\begin{center}\n";
-        ret += "\\rotategobanright\n";
+        ret += "\\vflipgoban\n";
         ret += "\\shortstack{\\showfullgoban \\\\ From move ";
         ret += &from_move.unwrap_or(0).to_string();
         ret += "}\n";
